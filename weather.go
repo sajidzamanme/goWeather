@@ -5,40 +5,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
-func (app *application) calcLocation(city string) (coOrdinate, error) {
-	searchURL := fmt.Sprintf("%vq=%v&limit=5&appid=%v", app.BASE_URL, city, app.API_KEY)
-
-	response, err := http.Get(searchURL)
+func (app *application) reportWeather(city string) (weatherInfo, error) {
+	searchURL, err := url.Parse(app.BASE_URL)
 	if err != nil {
-		return coOrdinate{}, fmt.Errorf("GET request failed: %w", err)
+		return weatherInfo{}, fmt.Errorf("invalid base URL: %w", err)
 	}
-	defer response.Body.Close()
+	params := url.Values{}
+	params.Set("q", city)
+	params.Set("appid", app.API_KEY)
+	searchURL.RawQuery = params.Encode()
 
-	if response.StatusCode != http.StatusOK {
-		return coOrdinate{}, fmt.Errorf("Status code: %v", response.StatusCode)
-	}
-
-	bytes, err := io.ReadAll(response.Body)
-	if err != nil {
-		return coOrdinate{}, fmt.Errorf("IO.ReadAll failed: %w", err)
-	}
-
-	xy := coOrdinate{}
-
-	err = json.Unmarshal(bytes, &xy)
-	if err != nil {
-		return coOrdinate{}, fmt.Errorf("JSON unmarshal failed: %w", err)
-	}
-
-	return xy, nil
-}
-
-func (app *application) reportWeather(lat, lon float64) (weatherInfo, error) {
-	searchURL := fmt.Sprintf("%vlat=%v&lon=%v&appid=%v", app.BASE_URL, lat, lon, app.API_KEY)
-
-	response, err := http.Get(searchURL)
+	response, err := http.Get(searchURL.String())
 	if err != nil {
 		return weatherInfo{}, fmt.Errorf("GET request failed: %w", err)
 	}
